@@ -44,8 +44,6 @@ def get_flux_loss(m, state, state_pred):
     perm = K.exp(m)
     p = K.expand_dims(state[:, :, :, 1], -1)
     p_pred = K.expand_dims(state_pred[:, :, :, 1], -1)
-
-    #print(K.int_shape(xxx))
     
     tran_x = 1./perm[:, 1:, ...] + 1./perm[:, :-1, ...]
     tran_y = 1./perm[:, :, 1:, ...] + 1./perm[:, :, :-1, ...]
@@ -74,8 +72,6 @@ def get_binary_sat_loss(state, state_pred):
     sat_pred_bool = K.greater_equal(sat_pred, sat_threshold) #will return boolean values
     sat_pred_bin = K.cast(sat_pred_bool, dtype=K.floatx()) #will convert bool to 0 and 1  
     
-#     binary_loss = K.sum(K.abs(K.batch_flatten(sat_bin) - K.batch_flatten(sat_pred_bin)), axis=-1)
-    
     binary_loss = losses.binary_crossentropy(sat_bin, sat_pred_bin)
     return K.mean(binary_loss)
 
@@ -94,14 +90,11 @@ def get_well_bhp_loss(state, state_pred, prod_well_loc):
     p_true = K.expand_dims(state[:, :, :, 1], -1)
     p_pred = K.expand_dims(state_pred[:, :, :, 1], -1)
     
-#     print(K.int_shape(prod_well_loc))
-#     print(K.int_shape(prod_well_loc[:, 0]))
-#     print(K.int_shape(prod_well_loc[:, 1]))
-#     print(prod_well_loc.shape[0])
+
     bhp_loss = 0
     for i in range(prod_well_loc.shape[0]):
         bhp_loss += K.mean(K.abs(p_true[:, prod_well_loc[i, 1], prod_well_loc[i, 0], :] - p_pred[:, prod_well_loc[i, 1], prod_well_loc[i, 0], :]))
-#     bhp_loss = K.sum(p_true[:, prod_well_loc[:, 0], prod_well_loc[:, 1], :] - p_pred[:, prod_well_loc[:,0], prod_well_loc[:,1], :])
+
     
     return bhp_loss
 
