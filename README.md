@@ -3,8 +3,11 @@ Code example for "deep-learning-based surrogate model for reservoir simulation w
 
 Zhaoyang Larry Jin, Yimin Liu, Louis J. Durlofsky
 
-Journal of Petroleum Science and Engineering
+Journal of Petroleum Science and Engineering  
 https://doi.org/10.1016/j.petrol.2020.107273
+
+Data is available at:  
+https://drive.google.com/drive/folders/1P-R6uNkzw4lbVjgOIoe42okom08MtAN7?usp=sharing
 
 ## How to cite:  
 ```
