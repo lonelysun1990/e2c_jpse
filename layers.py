@@ -1,10 +1,13 @@
-from keras import backend as K
-from keras.engine.topology import Layer
-from keras.layers.merge import add
-from keras.engine import InputSpec
-from keras.layers.core import Activation
-from keras.layers.convolutional import Conv2D, UpSampling2D
-from keras.layers import BatchNormalization, Dense
+# from keras import backend as K # tf-1.x
+from tensorflow.keras import backend as K # tf-2.x
+
+from tensorflow.keras.layers import Layer, add, InputSpec, Activation, Conv2D, UpSampling2D, BatchNormalization, Dense
+# from keras.engine.topology import Layer
+# from keras.layers.merge import add
+# from keras.engine import InputSpec
+# from keras.layers.core import Activation
+# from keras.layers.convolutional import Conv2D, UpSampling2D
+# from keras.layers import BatchNormalization, Dense
 
 import tensorflow as tf
 
@@ -64,7 +67,8 @@ class ReflectionPadding2D(Layer):
         super(ReflectionPadding2D, self).__init__(**kwargs)
 
         if dim_ordering == 'default':
-            dim_ordering = K.image_dim_ordering()
+#             dim_ordering = K.image_dim_ordering()
+            dim_ordering = 'tf'
 
         self.padding = padding
         if isinstance(padding, dict):
@@ -136,17 +140,17 @@ class UnPooling2D(UpSampling2D):
         shapes = x.get_shape().as_list()
         w = self.size[0] * shapes[1]
         h = self.size[1] * shapes[2]
-        return tf.image.resize_nearest_neighbor(x, (w, h))
+        return tf.compat.v1.image.resize_nearest_neighbor(x, (w, h))
 
 
-class InstanceNormalize(Layer):
-    def __init__(self, **kwargs):
-        super(InstanceNormalize, self).__init__(**kwargs)
-        self.epsilon = 1e-3
+# class InstanceNormalize(Layer):
+#     def __init__(self, **kwargs):
+#         super(InstanceNormalize, self).__init__(**kwargs)
+#         self.epsilon = 1e-3
 
-    def call(self, x, mask=None):
-        mean, var = tf.nn.moments(x, [1, 2], keep_dims=True)
-        return tf.div(tf.subtract(x, mean), tf.sqrt(tf.add(var, self.epsilon)))
+#     def call(self, x, mask=None):
+#         mean, var = tf.nn.moments(x, [1, 2], keep_dims=True)
+#         return tf.div(tf.subtract(x, mean), tf.sqrt(tf.add(var, self.epsilon)))
 
-    def compute_output_shape(self, input_shape):
-        return input_shape
+#     def compute_output_shape(self, input_shape):
+#         return input_shape

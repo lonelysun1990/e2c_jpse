@@ -1,9 +1,11 @@
 from layers import *
 
-from keras import backend as K
-from keras.layers import Input, Flatten, Dense, Lambda, Reshape, BatchNormalization
-from keras.models import Model
-from keras.layers.merge import Add, Multiply, Concatenate
+# tf-2.x
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Input, Flatten, Dense, Lambda, Reshape, BatchNormalization
+from tensorflow.keras.models import Model
+# from keras.layers.merge import Add, Multiply, Concatenate
+from tensorflow.keras.layers import Add, Multiply, Concatenate
 
 def create_trans(latent_dim, u_dim):
     '''

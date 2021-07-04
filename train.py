@@ -2,14 +2,15 @@ import numpy as np
 import h5py
 
 import e2c as e2c_util
-
-from keras import backend as K
-from keras.layers import Input
-from keras.models import Model
-from keras.optimizers import Adam
-from keras import losses
-
 import tensorflow as tf
+
+# tf-2.x
+from tensorflow.keras import backend as K 
+from tensorflow.keras.layers import Input
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import losses
+
 
 
 def reconstruction_loss(x, t_decoded):
