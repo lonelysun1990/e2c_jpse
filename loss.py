@@ -1,7 +1,5 @@
 import numpy as np
 import h5py
-
-import e2c as e2c_util
 import tensorflow as tf
 
 # tf-2.x
@@ -10,10 +8,11 @@ from tensorflow.keras.layers import Input
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import losses
+from tensorflow.keras.losses import Loss
 
 
 
-def reconstruction_loss(x, t_decoded):
+def get_reconstruction_loss(x, t_decoded):
     '''
     Reconstruction loss for the plain VAE
     '''
@@ -23,7 +22,7 @@ def reconstruction_loss(x, t_decoded):
     # return K.sum((K.batch_flatten(x) - K.batch_flatten(t_decoded)) ** 2, axis=-1)
 
 
-def l2_reg_loss(qm):
+def get_l2_reg_loss(qm):
     # 0.5 * (torch.log(pv) - torch.log(qv) + qv / pv + (qm - pm).pow(2) / pv - 1)
     # -0.5 * K.sum(1 + t_log_var - K.square(t_mean) - K.exp(t_log_var), axis=-1)
     # kl = -0.5 * (1 - p_logv + q_logv - K.exp(q_logv) / K.exp(p_logv) - K.square(qm - pm) / K.exp(p_logv))
@@ -99,23 +98,65 @@ def get_well_bhp_loss(state, state_pred, prod_well_loc):
     
     return bhp_loss
 
-def create_e2c(latent_dim, u_dim, input_shape, sigma=0):
-    '''
-    Creates a E2C.
+class CustomizedLoss(Loss):
+    def __init__(self, 
+                 lambda_flux_loss, 
+                 lambda_bhp_loss, 
+                 lambda_trans_loss):
+        
+        super(CustomizedLoss, self).__init__()
+        self.flux_loss_lambda = lambda_flux_loss
+        self.bhp_loss_lambda = lambda_bhp_loss
+        self.trans_loss_weight = lambda_trans_loss # The variable 'lambda' in E2C paper Eq. (11)
+        
+        self.total_loss = None
+        self.flux_loss = None
+        self.reconstruction_loss = None
+        self.well_loss =  None
+        
+    
+    def call(self, xt1, y_pred):
+        # Parse y_pred
+        xt1_pred, zt1_pred, zt1, zt, xt_rec, xt, perm, prod_loc = y_pred
+        
+        xt = tf.cast(xt, tf.float32)
+        xt1 = tf.cast(xt1, tf.float32)
+        
+        loss_rec_t = get_reconstruction_loss(xt, xt_rec)
+        loss_rec_t1 = get_reconstruction_loss(xt1, xt1_pred)
 
-    Args:
-        latent_dim: dimensionality of latent space
-        return_kl_loss_op: whether to return the operation for
-                           computing the KL divergence loss.
+        loss_flux_t = get_flux_loss(perm, xt, xt_rec) * self.flux_loss_lambda
+        loss_flux_t1 = get_flux_loss(perm, xt1, xt1_pred) * self.flux_loss_lambda
 
-    Returns:
-        The VAE model. If return_kl_loss_op is True, then the
-        operation for computing the KL divergence loss is
-        additionally returned.
-    '''
+        loss_prod_bhp_t = get_well_bhp_loss(xt, xt_rec, prod_loc) * self.bhp_loss_lambda
+        loss_prod_bhp_t1 = get_well_bhp_loss(xt1, xt1_pred, prod_loc) * self.bhp_loss_lambda
 
-    encoder_ = e2c_util.create_encoder(latent_dim, input_shape, sigma=sigma)
-    decoder_ = e2c_util.create_decoder(latent_dim, input_shape)
-    transition_ = e2c_util.create_trans(latent_dim, u_dim)
+        loss_l2_reg = get_l2_reg_loss(zt)  # log(1.) = 0.
 
-    return encoder_, decoder_, transition_
+        loss_bound = loss_rec_t + loss_rec_t1 + \
+                     loss_l2_reg  + \
+                     loss_flux_t + loss_flux_t1 + \
+                     loss_prod_bhp_t + loss_prod_bhp_t1 # JPSE 2020 Gaussian case
+        
+        # Use zt_logvar to approximate zt1_logvar_pred
+        loss_trans = get_l2_reg_loss(zt1_pred - zt1)
+        
+        self.flux_loss = loss_flux_t + loss_flux_t1
+        self.reconstruction_loss = loss_rec_t + loss_rec_t1
+        self.well_loss = loss_prod_bhp_t + loss_prod_bhp_t1
+        self.total_loss = loss_bound + self.trans_loss_weight * loss_trans
+        
+        return self.total_loss
+    
+    def getFluxLoss(self):
+        return self.flux_loss
+    
+    def getReconstructionLoss(self):
+        return self.reconstruction_loss
+    
+    def getWellLoss(self):
+        return self.well_loss
+    
+    def getTotalLoss(self):
+        return self.total_loss
+

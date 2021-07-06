@@ -22,15 +22,15 @@ https://drive.google.com/drive/folders/1P-R6uNkzw4lbVjgOIoe42okom08MtAN7?usp=sha
 ```
 
 
-This workflow is tested with Tensorflow 1.10.0 (cpu/gpu).
+This workflow is tested with Tensorflow 2.5.0 (cpu/gpu).
 
 
 ## 1. prepare_e2c_data.ipynb  
 Prepare the data for e2c training process. Here we assume that the simulation data (output of commercial simulator) is ready. The purpose of this step is re-orgainze the data so that it can easily consumed by the E2C model in the following step, which includes spliting the data into training set and test set.
 
-## 2. e2c_train.ipynb  
-Construct the E2C model with the training dataset.
+## 2. e2c_train_and_test.ipynb  
+Construct the E2C model.  
+Train E2C with the training dataset.  
+Evaluate E2C and provide basic plots.  
 
-## 3. e2c_eval.ipynb  
-Run the E2C model on the test dataset.
 
