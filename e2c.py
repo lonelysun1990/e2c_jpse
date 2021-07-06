@@ -1,9 +1,11 @@
 from layers import *
 
-from keras import backend as K
-from keras.layers import Input, Flatten, Dense, Lambda, Reshape, BatchNormalization
-from keras.models import Model
-from keras.layers.merge import Add, Multiply, Concatenate
+# tf-2.x
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Input, Flatten, Dense, Lambda, Reshape, BatchNormalization
+from tensorflow.keras.models import Model
+# from keras.layers.merge import Add, Multiply, Concatenate
+from tensorflow.keras.layers import Add, Multiply, Concatenate
 
 def create_trans(latent_dim, u_dim):
     '''
@@ -78,7 +80,6 @@ def create_encoder(latent_dim, input_shape, sigma=0.0):
     xi_mean = Dense(latent_dim, name='t_mean')(x)
 #     t_log_var = Dense(latent_dim, name='t_log_var')(x)
     sampler = create_sampler(sigma)
-    print('sigma = ', sigma)
     xi = sampler(xi_mean)
 
     return Model(encoder_input, xi, name='encoder')
@@ -130,14 +131,52 @@ def create_sampler(t_sigma):
     return Lambda(lambda x: sample(x, t_sigma), name='sampler')
 
 
-# ---------------------------------------------------
-#
-# modified by Larry from Yimin's first implementation
-#
-# ---------------------------------------------------
+def create_e2c(latent_dim, u_dim, input_shape, sigma=0):
+    '''
+    Creates a E2C.
 
-# def sample_normal(mu, log_var):
-#     sigma = K.sqrt(K.exp(log_var))
-#     epsilon = K.random.normal(shape=K.shape(mu), mean=0., stddev=1.)
-#     return mu + sigma * epsilon
+    Args:
+        latent_dim: dimensionality of latent space
+        return_kl_loss_op: whether to return the operation for
+                           computing the KL divergence loss.
 
+    Returns:
+        The VAE model. If return_kl_loss_op is True, then the
+        operation for computing the KL divergence loss is
+        additionally returned.
+    '''
+
+    encoder_ = create_encoder(latent_dim, input_shape, sigma=sigma)
+    decoder_ = create_decoder(latent_dim, input_shape)
+    transition_ = create_trans(latent_dim, u_dim)
+
+    return encoder_, decoder_, transition_
+
+class E2C(Model):
+    def __init__(self, latent_dim, u_dim, input_shape, perm_shape, prod_loc_shape, sigma=0.0):
+        super(E2C, self).__init__()
+        self._build_model(latent_dim, u_dim, input_shape, sigma)
+        self.perm_shape = perm_shape
+        self.prod_loc_shape = prod_loc_shape
+    
+    def _build_model(self, latent_dim, u_dim, input_shape, sigma):
+        self.encoder, self.decoder, self.transition = create_e2c(latent_dim, u_dim, input_shape, sigma)
+    
+    def call(self, inputs):
+        self.xt, self.ut, self.dt, self.perm, self.prod_loc = inputs
+        
+        self.zt = self.encoder(self.xt)
+        self.xt_rec = self.decoder(self.zt)
+        self.zt1_pred = self.transition([self.zt, self.ut, self.dt])
+        self.xt1_pred = self.decoder(self.zt1_pred)
+        return self.xt1_pred, self.zt1_pred, self.zt, self.xt_rec, self.perm, self.prod_loc
+    
+    def loadWeightsFromFile(self, encoder_file, decoder_file, transition_file):
+        self.encoder.load_weights(encoder_file)
+        self.decoder.load_weights(decoder_file)
+        self.transition.load_weights(transition_file)
+        
+    def saveWeightsToFile(self, encoder_file, decoder_file, transition_file):
+        self.encoder.save_weights(encoder_file)
+        self.decoder.save_weights(decoder_file)
+        self.transition.save_weights(transition_file)
